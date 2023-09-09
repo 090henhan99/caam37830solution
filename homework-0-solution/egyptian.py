@@ -38,4 +38,26 @@ def power(a, n):
 
     assume n is a nonegative integer
     """
-    pass
+    """
+    returns the product a * n
+
+    assume n is a nonegative integer
+    """
+    def isodd(n):
+        """
+        returns True if n is odd
+        """
+        return n & 0x1 == 1
+
+    if n == 1:
+        print('= {a}'.format(a=a))
+        return a
+    if n == 0:
+        return 1
+
+    if isodd(n):
+        print('= egyptian_power({a}*{a},{n}//2)*{a}'.format(a=a,n=n))
+        return power(a * a, n // 2) * a
+    else:
+        print('= egyptian_power({a}*{a},{n}//2)'.format(a=a,n=n))
+        return power(a * a, n // 2)
