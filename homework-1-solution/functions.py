@@ -82,7 +82,13 @@ class AbstractFunction:
         plots function on values
         pass kwargs to plotting function
         """
-        raise NotImplementedError("plot")
+        if isinstance(vals,np.ndarray) or isinstance(vals,numbers.Numbers) \
+            or isinstance(vals, np.number):
+            return plt.plot(vals, self.evaluate(vals), **kwargs)
+        else:
+            raise TypeError("vals type error, not array or number")
+
+
 
 
 class Polynomial(AbstractFunction):
@@ -207,3 +213,52 @@ class Affine(Polynomial):
     """
     def __init__(self, a, b):
         super().__init__(a, b)
+
+class Scale(Polynomial):
+    def __init__(self,a):
+        super().__init__(a,0)
+        
+class Constant(Polynomial):
+    def __init__(self,c):
+        super().__init__(c)
+        
+class Compose(AbstractFunction):
+    def __init__(self, f, g):
+        self.f = f
+        self.g = g
+    def evaluate(self, x):
+        return self.f(self.g(x))
+    def derivative(self):
+        return super().derivative(self.f)(self.g) \
+            * super().derivative(self.g)
+    def __repr__(self):
+        return "Compose({0}, {1})".format(self.f.__repr__(),self.g.__repr__())
+    def __str__(self):
+        return self.g.__str__().format("("+self.f.__str__()+")")
+    
+            
+class Product(AbstractFunction):
+    def __init__(self, f : AbstractFunction, g : AbstractFunction):
+        self.f = f
+        self.g = g
+    def evaluate(self,x):
+            return self.f.evaluate(x) * self.g.evaluate(x)
+    def derivative(self):
+        return self.f.derivative(self.g) * self.g.derivative()
+    def __repr__(self):
+        return "Product({0},{1})".format(self.f.__repr__(),self.g.__repr__())
+    def __str__(self):
+        return "({0})*({1})".format(self.f.__str__(),self.g.__str__())
+
+class Sum(AbstractFunction):
+    def __init__(self, f : AbstractFunction, g : AbstractFunction):
+        self.f = f
+        self.g = g
+    def evaluate(self,x):
+            return self.f.evaluate(x) + self.g.evaluate(x)
+    def derivative(self):
+        return self.f.derivative() + self.g.derivative()
+    def __repr__(self):
+        return "Sum({0},{1})".format(self.f.__repr__(),self.g.__repr__())
+    def __str__(self):
+        return "({0})+({1})".format(self.f.__str__(),self.g.__str__())
