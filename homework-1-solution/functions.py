@@ -4,7 +4,6 @@ A library of functions
 import numpy as np
 import matplotlib.pyplot as plt
 import numbers
-
 class AbstractFunction:
     """
     An abstract function class
@@ -262,3 +261,188 @@ class Sum(AbstractFunction):
         return "Sum({0},{1})".format(self.f.__repr__(),self.g.__repr__())
     def __str__(self):
         return "({0})+({1})".format(self.f.__str__(),self.g.__str__())
+
+class Power(AbstractFunction):
+    def __init__(self,n):
+        self.n = n
+    def derivative(self):
+        return self.n * Power(self.n-1)
+    def __repr__(self):
+        return 'Power({0})'.format(self.n)
+    def __str__(self):
+        return "({{0}})^({n})".format(n = self.n)
+    def evaluate(self,x):
+        return np.power(x,self.n)
+    
+class Log(AbstractFunction):
+    def derivative(self):
+        return Power(-1)
+    def __repr__(self):
+        return 'log({0})'.format(self.n)
+    def __str__(self):
+        return "log({0})"
+    def evaluate(self,x):
+        return np.log(x)
+    
+class Exponential(AbstractFunction):
+    def derivative(self):
+        return Exponential()
+    def __repr__(self):
+        return 'exp()'
+    def __str__(self):
+        return "exp({0})"
+    def evaluate(self,x):
+        return np.exp(x)
+    
+class Sin(AbstractFunction):
+    def derivative(self):
+        return Cos()
+    def __repr__(self):
+        return 'sin()'
+    def __str__(self):
+        return "sin({0})"
+    def evaluate(self,x):
+        return np.sin(x)
+     
+class Cos(AbstractFunction):
+    def derivate(self):
+        return -Sin()
+    def __repr__(self):
+        return 'cos()'
+    def __str__(self):
+        return "cos({0})"
+    def evaluate(self,x):
+        return np.cos(x)
+    
+class Symbolic():
+    def __init__(self,data):
+        self.data = data
+    def __str__(self):
+        return self.data + "({0})"
+    def __call__(self,x):
+        if isinstance(x, Symbolic):
+            return CompSymbolic(self, x)
+        else:
+            return "{0}({1})".format(self.data,x)
+    def derivative(self):
+        return Symbolic(self.data+"'")
+    def __add__(self,other):
+        return SumSymbolic(self,other)
+    def __mul__(self,other):
+        return ProdSymbolic(self,other)
+    def __rmul__(self,other):
+        return ProdSymbolic(other,self)
+    def __neg__(self):
+        return ScaleSymbolic(-1)(self)
+    
+    
+class SumSymbolic(Symbolic):
+    def __init__(self,A:Symbolic,B:Symbolic):
+        self.A = A
+        self.B = B
+    def __str__(self):
+        return "({stringA}+{stringB})".format(stringA=self.A,stringB=self.B)
+    def __call__(self,x):
+        if isinstance(x, Symbolic):
+            return CompSymbolic(self, x)
+        else:
+            return "({stringA}+{stringB})".format(stringA=self.A,stringB=self.B).format(x)
+    def derivative(self):
+        return self.A.derivative()+self.B.derivative()
+
+class ProdSymbolic(Symbolic):
+    def __init__(self,A:Symbolic,B:Symbolic):
+        self.A = A
+        self.B = B
+    def __str__(self):
+        return "({stringA}*{stringB})".format(stringA=self.A,stringB=self.B) 
+    def __call__(self,x):
+        if isinstance(x, Symbolic):
+            return CompSymbolic(self, x)
+        else:
+            return "({stringA}*{stringB})".format(stringA=self.A,stringB=self.B).format(x)
+    def derivative(self):
+        return self.A.derivative() * self.B \
+            + self.A * self.B.derivative()
+
+class CompSymbolic(Symbolic):
+    def __init__(self,A:Symbolic, B:Symbolic):
+        self.A = A
+        self.B = B
+    def __str__(self):
+        return "{stringA}".format(stringA=self.A).format(self.B) 
+    def __call__(self,x):
+        if isinstance(x, Symbolic):
+            return CompSymbolic(self, x)
+        else:
+            return "{stringA}".format(stringA=self.A).format(self.B).format(x)
+    def derivative(self):
+        return self.A.derivative()(self.B)*self.B.derivative()
+"""
+class PolySymbolic(Symbolic):
+    
+class PowerSymbolic(Symbolic):
+ """   
+class SinSymbolic(Symbolic):
+    def __init__(self):
+        super().__init__("sin")
+    def derivative(self):
+        return CosSymbolic()    
+
+class CosSymbolic(Symbolic):
+    def __init__(self):
+        super().__init__("cos")
+    def derivative(self):
+        return -SinSymbolic()   
+     
+class ExpSymbolic(Symbolic):
+    def __init__(self):
+        super().__init__('exp')
+    def derivative(self):
+        return self
+    
+class ScaleSymbolic(Symbolic):
+    def __init__(self,n):
+        if n >= 0:
+            super().__init__("{0}*".format(n))
+        if n < 0:
+            super().__init__("(-{0})*".format(-n))
+        self.n = n
+    def derivative(self):
+        return ConstSymbolic(self.n)
+    def __call__(self,other):
+        if isinstance(other,Symbolic):
+            return ConstSymbolic(self.n) * other
+        else:
+            return self.data.format(other)
+    def __add__(self,other):
+        if isinstance(other,ScaleSymbolic):
+            return ScaleSymbolic(self.n+other.n)
+        else:
+            return super().__add__(self,other)
+    
+class ConstSymbolic(Symbolic):
+    def __init__(self,n):
+        self.data = '{0}'.format(n)
+        self.n = n
+    def __str__(self):
+        return self.data
+    def __call__(self,other):
+        return self
+    def derivative(self):
+        return ConstSymbolic(0)
+    
+class PowerSymbolic(Symbolic):
+    def __init__(self,n):
+            self.data = 'Power({{0}},{0})'.format(n)
+            self.n = n
+    def __str__(self):
+        return self.data
+    def __call__(self,other):
+        if isinstance(other,Symbolic):
+            return CompSymbolic(self,other)
+        else:
+            return self.data.format(other)
+    def derivative(self):
+        return ConstSymbolic(self.n) * PowerSymbolic(self.n-1)
+    
