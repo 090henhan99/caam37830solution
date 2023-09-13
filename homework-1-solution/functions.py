@@ -4,10 +4,20 @@ A library of functions
 import numpy as np
 import matplotlib.pyplot as plt
 import numbers
+import math
 class AbstractFunction:
     """
     An abstract function class
     """
+
+    def taylor_series(self, x0, deg=5):
+        coef = []
+        for i in range(deg,-1,-1):
+            f = self
+            for j in range(0,i,1):
+                f = f.derivative()
+            coef.append(f.evaluate(x0)/math.factorial(i))
+        return Compose(Polynomial(*coef),Polynomial(1,-x0))
 
     def derivative(self):
         """
@@ -222,14 +232,13 @@ class Constant(Polynomial):
         super().__init__(c)
         
 class Compose(AbstractFunction):
-    def __init__(self, f, g):
+    def __init__(self, f:AbstractFunction, g:AbstractFunction):
         self.f = f
         self.g = g
     def evaluate(self, x):
         return self.f(self.g(x))
     def derivative(self):
-        return super().derivative(self.f)(self.g) \
-            * super().derivative(self.g)
+        return self.f.derivative()(self.g) * self.g.derivative()
     def __repr__(self):
         return "Compose({0}, {1})".format(self.f.__repr__(),self.g.__repr__())
     def __str__(self):
@@ -237,20 +246,20 @@ class Compose(AbstractFunction):
     
             
 class Product(AbstractFunction):
-    def __init__(self, f : AbstractFunction, g : AbstractFunction):
+    def __init__(self, f , g):
         self.f = f
         self.g = g
     def evaluate(self,x):
-            return self.f.evaluate(x) * self.g.evaluate(x)
+        return self.f.evaluate(x) * self.g.evaluate(x)
     def derivative(self):
-        return self.f.derivative(self.g) * self.g.derivative()
+        return self.f.derivative() * self.g + self.g.derivative() * self.f
     def __repr__(self):
         return "Product({0},{1})".format(self.f.__repr__(),self.g.__repr__())
     def __str__(self):
         return "({0})*({1})".format(self.f.__str__(),self.g.__str__())
 
 class Sum(AbstractFunction):
-    def __init__(self, f : AbstractFunction, g : AbstractFunction):
+    def __init__(self, f, g):
         self.f = f
         self.g = g
     def evaluate(self,x):
@@ -305,7 +314,7 @@ class Sin(AbstractFunction):
         return np.sin(x)
      
 class Cos(AbstractFunction):
-    def derivate(self):
+    def derivative(self):
         return -Sin()
     def __repr__(self):
         return 'cos()'
@@ -314,6 +323,9 @@ class Cos(AbstractFunction):
     def evaluate(self,x):
         return np.cos(x)
     
+"""
+=== Symbolic Functions ===
+"""
 class Symbolic():
     def __init__(self,data):
         self.data = data
@@ -333,9 +345,7 @@ class Symbolic():
     def __rmul__(self,other):
         return ProdSymbolic(other,self)
     def __neg__(self):
-        return ScaleSymbolic(-1)(self)
-    
-    
+        return ScaleSymbolic(-1)(self)   
 class SumSymbolic(Symbolic):
     def __init__(self,A:Symbolic,B:Symbolic):
         self.A = A
@@ -349,7 +359,6 @@ class SumSymbolic(Symbolic):
             return "({stringA}+{stringB})".format(stringA=self.A,stringB=self.B).format(x)
     def derivative(self):
         return self.A.derivative()+self.B.derivative()
-
 class ProdSymbolic(Symbolic):
     def __init__(self,A:Symbolic,B:Symbolic):
         self.A = A
@@ -364,7 +373,6 @@ class ProdSymbolic(Symbolic):
     def derivative(self):
         return self.A.derivative() * self.B \
             + self.A * self.B.derivative()
-
 class CompSymbolic(Symbolic):
     def __init__(self,A:Symbolic, B:Symbolic):
         self.A = A
@@ -388,19 +396,16 @@ class SinSymbolic(Symbolic):
         super().__init__("sin")
     def derivative(self):
         return CosSymbolic()    
-
 class CosSymbolic(Symbolic):
     def __init__(self):
         super().__init__("cos")
     def derivative(self):
-        return -SinSymbolic()   
-     
+        return -SinSymbolic()      
 class ExpSymbolic(Symbolic):
     def __init__(self):
         super().__init__('exp')
     def derivative(self):
-        return self
-    
+        return self  
 class ScaleSymbolic(Symbolic):
     def __init__(self,n):
         if n >= 0:
@@ -419,8 +424,7 @@ class ScaleSymbolic(Symbolic):
         if isinstance(other,ScaleSymbolic):
             return ScaleSymbolic(self.n+other.n)
         else:
-            return super().__add__(self,other)
-    
+            return super().__add__(self,other)  
 class ConstSymbolic(Symbolic):
     def __init__(self,n):
         self.data = '{0}'.format(n)
@@ -431,7 +435,6 @@ class ConstSymbolic(Symbolic):
         return self
     def derivative(self):
         return ConstSymbolic(0)
-    
 class PowerSymbolic(Symbolic):
     def __init__(self,n):
             self.data = 'Power({{0}},{0})'.format(n)
@@ -445,4 +448,29 @@ class PowerSymbolic(Symbolic):
             return self.data.format(other)
     def derivative(self):
         return ConstSymbolic(self.n) * PowerSymbolic(self.n-1)
-    
+
+"""
+=== Newton's method for root finding ===
+"""
+
+def newton_root(f:AbstractFunction,x0,tol=1e-8):
+    if (not isinstance(f,AbstractFunction)) or (not isinstance(x0,numbers.Number)):
+        raise TypeError('input function is not AbstractFunction, or inital point not number')
+    else:
+        fx = f(x0)
+        fp = f.derivative()
+        fpx = fp(x0)
+        x = x0
+    while (abs(fx) > tol):
+        x = x -fx / fpx
+        fx = f(x)
+        fpx = fp(x)
+    return x
+
+def newton_extremum(f,x0,tol=1e-8):
+    if (not isinstance(f,AbstractFunction)) or (not isinstance(x0,numbers.Number)):
+        raise TypeError('input function is not AbstractFunction, or inital point not number')
+    else:
+        fp = f.derivative()
+        x = newton_root(fp,x0,tol=tol)
+        return x
